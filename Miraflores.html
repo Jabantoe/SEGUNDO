@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="initial-scale=1,user-scalable=no,maximum-scale=1,width=device-width">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <link rel="stylesheet" href="css/leaflet.css">
+        <link rel="stylesheet" href="css/L.Control.Layers.Tree.css">
+        <link rel="stylesheet" href="css/L.Control.Locate.min.css">
+        <link rel="stylesheet" href="css/qgis2web.css">
+        <link rel="stylesheet" href="css/fontawesome-all.min.css">
+        <link rel="stylesheet" href="css/leaflet-control-geocoder.Geocoder.css">
+        <link rel="stylesheet" href="css/leaflet-measure.css">
+        <style>
+        html, body, #map {
+            width: 100%;
+            height:100%;
+           padding: 0;
+            margin:0;
+			overflow:hidden;
+        }
+        </style>
+        <title>Miraflores Camaras Vigilancia</title>
+    </head>
+    <body>
+		   <div id="map">
+        </div>
+        <script src="js/qgis2web_expressions.js"></script>
+        <script src="js/leaflet.js"></script>
+        <script src="js/L.Control.Layers.Tree.min.js"></script>
+        <script src="js/L.Control.Locate.min.js"></script>
+        <script src="js/leaflet.rotatedMarker.js"></script>
+        <script src="js/leaflet.pattern.js"></script>
+        <script src="js/leaflet-hash.js"></script>
+        <script src="js/Autolinker.min.js"></script>
+        <script src="js/rbush.min.js"></script>
+        <script src="js/labelgun.min.js"></script>
+        <script src="js/labels.js"></script>
+        <script src="js/leaflet-control-geocoder.Geocoder.js"></script>
+        <script src="js/leaflet-measure.js"></script>
+		<script src="js/leaflet-search.js"></script>
+        <script src="data/Miraflores_1.js"></script>
+        <script src="data/ruta_miraf_2.js"></script>
+        <script src="data/camaras_videovigilancia_3.js"></script>
+        <script src="data/terminales_miraf_4.js"></script>
+        <script>
+        var map = L.map('map', {
+				center: [-12.120290, -77.030537],
+				zoom: 5,
+				//maxBounds:[[-8.39482069015506,-74.58179622888], [-8.38238060474396,-74.5563232898711]],
+				maxZoom:28,
+				minZoom:2
+				});
+			
+              var hash = new L.Hash(map);
+        map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2web" target="_blank">Proyecto Miraflores camaras de vigilancia| Catastro Gis 2024 |Jairo Abanto | Catastro Gis 2024 | MadereK</a> &middot; <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
+        var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+        // remove popup's row if "visible-with-data"
+        function removeEmptyRowsFromPopupContent(content, feature) {
+         var tempDiv = document.createElement('div');
+         tempDiv.innerHTML = content;
+         var rows = tempDiv.querySelectorAll('tr');
+         for (var i = 0; i < rows.length; i++) {
+             var td = rows[i].querySelector('td.visible-with-data');
+             var key = td ? td.id : '';
+             if (td && td.classList.contains('visible-with-data') && feature.properties[key] == null) {
+                 rows[i].parentNode.removeChild(rows[i]);
+             }
+         }
+         return tempDiv.innerHTML;
+        }
+		
+		
+		var popup = L.popup()
+			.setLatLng([-12.136431, -77.060863])
+			.setContent("Este mapa muestra la distribución de las camaras  de vigilancia del Distrito Miraflores, activar en la derecha la información a consultar,si desea buscar una camara ,en el icono binoculares ingresar el codigo de la camara a buscar, fecha de actualización diciembre 2024 (Gis - Catastro)")
+			.openOn(map);
+        // add class to format popup if it contains media
+		function addClassToPopupIfMedia(content, popup) {
+			var tempDiv = document.createElement('div');
+			tempDiv.innerHTML = content;
+			if (tempDiv.querySelector('td img')) {
+				popup._contentNode.classList.add('media');
+					// Delay to force the redraw
+					setTimeout(function() {
+						popup.update();
+					}, 10);
+			} else {
+				popup._contentNode.classList.remove('media');
+			}
+		}
+        var title = new L.Control({'position':'bottomleft'});
+        title.onAdd = function (map) {
+            this._div = L.DomUtil.create('div', 'info');
+            this.update();
+            return this._div;
+        };
+        title.update = function () {
+            this._div.innerHTML = '<h2>Proyecto Miraflores Camaras Vigilancia</h2>';
+        };
+        title.addTo(map);
+        L.control.locate({locateOptions: {maxZoom: 15}}).addTo(map);
+        var measureControl = new L.Control.Measure({
+            position: 'topleft',
+            primaryLengthUnit: 'meters',
+            secondaryLengthUnit: 'kilometers',
+            primaryAreaUnit: 'sqmeters',
+            secondaryAreaUnit: 'hectares'
+        });
+        measureControl.addTo(map);
+        document.getElementsByClassName('leaflet-control-measure-toggle')[0].innerHTML = '';
+        document.getElementsByClassName('leaflet-control-measure-toggle')[0].className += ' fas fa-ruler';
+        var bounds_group = new L.featureGroup([]);
+        function setBounds() {
+            if (bounds_group.getLayers().length) {
+                map.fitBounds(bounds_group.getBounds());
+            }
+        }
+        map.createPane('pane_OSMStandard_0');
+        map.getPane('pane_OSMStandard_0').style.zIndex = 400;
+        var layer_OSMStandard_0 = L.tileLayer('http://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            pane: 'pane_OSMStandard_0',
+            opacity: 1.0,
+            attribution: '<a href="https://www.openstreetmap.org/copyright">© OpenStreetMap contributors, CC-BY-SA</a>',
+            minZoom: 1,
+            maxZoom: 28,
+            minNativeZoom: 0,
+            maxNativeZoom: 19
+        });
+        layer_OSMStandard_0;
+        	var google = L.tileLayer('https://mt1.google.com/vt/lyrs=r&x={x}&y={y}&z={z}');
+			var opentopomap = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png');
+			var agonline = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
+			var cartocdn = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png');
+			map.addLayer(cartocdn);
+       
+        function pop_ruta_miraf_2(feature, layer) {
+            var popupContent = '<table>\
+			<tr>\
+                     		<th colspan="2"><center>DATO SELECCIONADO : RUTA CIRCUITO </center></td>\
+						</tr>\
+						 <tr>\
+						<td colspan="2"><center><img src="./css/images/WIN.png" width="80" heigth="300"></center></td>\
+						</tr>\
+						<tr>\
+                        <td colspan="2"><center><img src="./css/images/FIBRASENAL.GIF" width="70" heigth="250"></center></td>\
+                    </tr>\
+					<tr>\
+                        <th scope="row">nom_ruta</th>\
+                        <td>' + (feature.properties['Nombre ruta'] !== null ? autolinker.link(feature.properties['nom_ruta'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Origen</th>\
+                        <td>' + (feature.properties['Origen'] !== null ? autolinker.link(feature.properties['n_origen'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Llegada</th>\
+                        <td>' + (feature.properties['Llegada'] !== null ? autolinker.link(feature.properties['n_final'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Estado</th>\
+                        <td>' + (feature.properties['Estado'] !== null ? autolinker.link(feature.properties['estado'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Uso_ruta</th>\
+                        <td>' + (feature.properties['Uso ruta'] !== null ? autolinker.link(feature.properties['uso_ruta'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Propietario</th>\
+                        <td>' + (feature.properties['Propietario'] !== null ? autolinker.link(feature.properties['propieta'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                   <tr>\
+                        <th scope="row">Longitud</th>\
+                        <td>' + (feature.properties['long_ruta'] !== null ? autolinker.link(feature.properties['long_ruta'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                     <tr>\
+                        <th scope="row">obs</th>\
+                        <td>' + (feature.properties['obs'] !== null ? autolinker.link(feature.properties['obs'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                     <tr>\
+                        <th scope="row">Diagrama </th>\
+                        <td>' + (feature.properties['diagrama_empalme'] !== null ? autolinker.link(feature.properties['diagrama_empalme'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_ruta_miraf_2_0() {
+            return {
+                pane: 'pane_ruta_miraf_2',
+                opacity: 1,
+                color: 'rgba(22,55,240,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'round',
+                weight: 1.0,
+                fillOpacity: 0,
+                interactive: true,
+            }
+        }
+        map.createPane('pane_ruta_miraf_2');
+        map.getPane('pane_ruta_miraf_2').style.zIndex = 402;
+        map.getPane('pane_ruta_miraf_2').style['mix-blend-mode'] = 'normal';
+        var layer_ruta_miraf_2 = new L.geoJson(json_ruta_miraf_2, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_ruta_miraf_2',
+            layerName: 'layer_ruta_miraf_2',
+            pane: 'pane_ruta_miraf_2',
+            onEachFeature: pop_ruta_miraf_2,
+            style: style_ruta_miraf_2_0,
+        });
+        bounds_group.addLayer(layer_ruta_miraf_2);
+        map.addLayer(layer_ruta_miraf_2);
+        function pop_camaras_videovigilancia_3(feature, layer) {
+            var popupContent = '<table>\
+                   		<tr>\
+                        <th colspan="2"><center>DATO SELECCIONADO : CAMARAS </center></td>\
+						</tr>\
+						<td colspan="2"><center><img src="./css/images/camera.svg" width="60" heigth="230"></center></td>\
+                        </tr>\
+						<td colspan="2"><center><img src="./css/images/WIN.png" width="70" heigth="280"></center></td>\
+						</tr>\
+					                    <tr>\
+                        <th scope="row">Cod. Camara</th>\
+                        <td>' + (feature.properties['descripcio'] !== null ? autolinker.link(feature.properties['descripcio'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">estado</th>\
+                        <td>' + (feature.properties['estado'] !== null ? autolinker.link(feature.properties['estado'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+					<tr>\
+                        <th scope="row">Fecha Inst</th>\
+                        <td>' + (feature.properties['fech_fin'] !== null ? autolinker.link(feature.properties['fech_fin'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Direccion</th>\
+                        <td>' + (feature.properties['direcc_ter'] !== null ? autolinker.link(feature.properties['direcc_ter'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Distrito</th>\
+                        <td>' + (feature.properties['nom_distr'] !== null ? autolinker.link(feature.properties['nom_distr'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                                      <tr>\
+                        <td colspan="2">' + (feature.properties['foto'] !== null ? '<center><img src="images/' + String(feature.properties['foto']).replace(/[\\\/:]/g, '_').trim() +'"width="250" heigth="500"></center>' :'') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_camaras_videovigilancia_3_0() {
+            return {
+                pane: 'pane_camaras_videovigilancia_3',
+        rotationAngle: 0.0,
+        rotationOrigin: 'center center',
+        icon: L.icon({
+            iconUrl: 'markers/camaras_videovigilancia_3.svg',
+			stroke : 'rgba(252, 252, 252)',
+            iconSize: [22.799999999999997, 22.799999999999997]
+        }),
+                interactive: true,
+            }
+        }
+        map.createPane('pane_camaras_videovigilancia_3');
+        map.getPane('pane_camaras_videovigilancia_3').style.zIndex = 403;
+        map.getPane('pane_camaras_videovigilancia_3').style['mix-blend-mode'] = 'normal';
+        var layer_camaras_videovigilancia_3 = new L.geoJson(json_camaras_videovigilancia_3, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_camaras_videovigilancia_3',
+            layerName: 'layer_camaras_videovigilancia_3',
+            pane: 'pane_camaras_videovigilancia_3',
+            onEachFeature: pop_camaras_videovigilancia_3,
+            pointToLayer: function (feature, latlng) {
+                var context = {
+                    feature: feature,
+                    variables: {}
+                };
+                return L.marker(latlng, style_camaras_videovigilancia_3_0(feature));
+            },
+        });
+        bounds_group.addLayer(layer_camaras_videovigilancia_3);
+        function pop_terminales_miraf_4(feature, layer) {
+            var popupContent = '<table>\
+                      <tr>\
+                        <th colspan="2"><center>DATO SELECCIONADO : TERMINALES </center></td>\
+						</tr>\
+                        <td colspan="2"><center><img src="./css/images/WIN.png" width="90" heigth="300"></center></td>\
+						</tr>\
+					  <tr>\
+                        <th scope="row">Nombre_Ref</th>\
+                        <td>' + (feature.properties['nom_term'] !== null ? autolinker.link(feature.properties['nom_term'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Codigo</th>\
+                        <td>' + (feature.properties['cod_term'] !== null ? autolinker.link(feature.properties['cod_term'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">cod_poste</th>\
+                        <td>' + (feature.properties['cod_poste'] !== null ? autolinker.link(feature.properties['cod_poste'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">cod_camara</th>\
+                        <td>' + (feature.properties['cod_camara'] !== null ? autolinker.link(feature.properties['cod_camara'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Tipo</th>\
+                        <td>' + (feature.properties['tipo_term'] !== null ? autolinker.link(feature.properties['tipo_term'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Modelo</th>\
+                        <td>' + (feature.properties['modelo_ter'] !== null ? autolinker.link(feature.properties['modelo_ter'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Marca</th>\
+                        <td>' + (feature.properties['marca_term'] !== null ? autolinker.link(feature.properties['marca_term'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Estado</th>\
+                        <td>' + (feature.properties['estado'] !== null ? autolinker.link(feature.properties['estado'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">fecha Inst</th>\
+                        <td>' + (feature.properties['fecha_inst'] !== null ? autolinker.link(feature.properties['fecha_inst'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Direccion</th>\
+                        <td>' + (feature.properties['direcc_ter'] !== null ? autolinker.link(feature.properties['direcc_ter'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Distrito</th>\
+                        <td>' + (feature.properties['nom_distr'] !== null ? autolinker.link(feature.properties['nom_distr'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['foto'] !== null ? '<center><img src="images/' + String(feature.properties['foto']).replace(/[\\\/:]/g, '_').trim() +'"width="250" heigth="430"></center>' :'') + '</td>\
+                    </tr>\
+                </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_terminales_miraf_4_0() {
+            return {
+                pane: 'pane_terminales_miraf_4',
+                radius: 7.0,
+                opacity: 1,
+                color: 'rgba(255,255,255,1.0)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 1,
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(239,25,46,1.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_terminales_miraf_4');
+        map.getPane('pane_terminales_miraf_4').style.zIndex = 404;
+        map.getPane('pane_terminales_miraf_4').style['mix-blend-mode'] = 'normal';
+        var layer_terminales_miraf_4 = new L.geoJson(json_terminales_miraf_4, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_terminales_miraf_4',
+            layerName: 'layer_terminales_miraf_4',
+            pane: 'pane_terminales_miraf_4',
+            onEachFeature: pop_terminales_miraf_4,
+            pointToLayer: function (feature, latlng) {
+                var context = {
+                    feature: feature,
+                    variables: {}
+                };
+                return L.circleMarker(latlng, style_terminales_miraf_4_0(feature));
+            },
+        });
+        bounds_group.addLayer(layer_terminales_miraf_4);
+        map.addLayer(layer_terminales_miraf_4);
+		 function pop_Miraflores_1(feature, layer) {
+            var popupContent = '<table>\
+			<tr>\
+                        <th colspan="2"><center>DATO SELECCIONADO : LIMITE MIRAFLORES </center></td>\
+						</tr>\
+                     <tr>\
+                        <th scope="row">Distrito</th>\
+                        <td>' + (feature.properties['nombdist'] !== null ? autolinker.link(feature.properties['nombdist'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Provincia</th>\
+                        <td>' + (feature.properties['nombprov'] !== null ? autolinker.link(feature.properties['nombprov'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <th scope="row">Departamentos</th>\
+                        <td>' + (feature.properties['nombdep'] !== null ? autolinker.link(feature.properties['nombdep'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                  </table>';
+            var content = removeEmptyRowsFromPopupContent(popupContent, feature);
+			layer.on('popupopen', function(e) {
+				addClassToPopupIfMedia(content, e.popup);
+			});
+			layer.bindPopup(content, { maxHeight: 400 });
+        }
+
+        function style_Miraflores_1_0() {
+            return {
+                pane: 'pane_Miraflores_1',
+                opacity: 1,
+                color: 'rgba(255,28,221,1.0)',
+                dashArray: '20.0,4.0',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 4.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(244,20,31,0.0)',
+                interactive: true,
+            }
+        }
+        map.createPane('pane_Miraflores_1');
+        map.getPane('pane_Miraflores_1').style.zIndex = 401;
+        map.getPane('pane_Miraflores_1').style['mix-blend-mode'] = 'normal';
+        var layer_Miraflores_1 = new L.geoJson(json_Miraflores_1, {
+            attribution: '',
+            interactive: true,
+            dataVar: 'json_Miraflores_1',
+            layerName: 'layer_Miraflores_1',
+            pane: 'pane_Miraflores_1',
+            onEachFeature: pop_Miraflores_1,
+            style: style_Miraflores_1_0,
+        });
+        bounds_group.addLayer(layer_Miraflores_1);
+        map.addLayer(layer_Miraflores_1);
+        var osmGeocoder = new L.Control.Geocoder({
+            collapsed: true,
+            position: 'topleft',
+            text: 'Search',
+            title: 'Testing'
+        }).addTo(map);
+        document.getElementsByClassName('leaflet-control-geocoder-icon')[0]
+        .className += ' fa fa-search';
+        document.getElementsByClassName('leaflet-control-geocoder-icon')[0]
+        .title += 'Search for a place';
+        var overlaysTree = [
+		
+		{label:"Seleccionar capa" },
+            {label: '<img src="legend/terminales_miraf_4.png" /> terminales_miraf', layer: layer_terminales_miraf_4},
+            {label: '<img src="legend/camaras_videovigilancia_3.png" /> camaras_videovigilancia', layer: layer_camaras_videovigilancia_3},
+            {label: '<img src="legend/ruta_miraf_2.png" /> ruta_miraf', layer: layer_ruta_miraf_2},
+            {label: '<img src="legend/Miraflores_1.png" /> Miraflores', layer: layer_Miraflores_1},
+          	{label:"---------------------------" },
+			{label:"Mapa Base" },
+			{label:"vista Satelite" , layer: agonline},
+			{label:"vista Carto cd" , layer: cartocdn},
+			{label:"vista Open to map" , layer: opentopomap},
+		    {label: "OSM Standard", layer: layer_OSMStandard_0},]
+        var lay = L.control.layers.tree(null, overlaysTree,{
+            //namedToggle: true,
+            //selectorBack: false,
+            //closedSymbol: '&#8862; &#x1f5c0;',
+            //openedSymbol: '&#8863; &#x1f5c1;',
+            //collapseAll: 'Collapse all',
+            //expandAll: 'Expand all',
+            collapsed: true,
+        });
+        lay.addTo(map);
+        setBounds();
+		 map.addControl(new L.Control.Search({
+            layer: layer_camaras_videovigilancia_3,
+             hideMarkerOnCollapse: true,
+            propertyName: 'descripcio'}));
+        document.getElementsByClassName('search-button')[0].className +=
+         ' fa fa-binoculars';
+        </script>
+    </body>
+</html>
